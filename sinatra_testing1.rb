@@ -28,4 +28,15 @@ end
 
 post '/login' do
   "Username: #{params[:username]} Password: #{params[:password]}"
+
+  DB = Sequel.connect('sqlite://testdb')
+
+  user = DB.fetch("SELECT id FROM users WHERE username = ? AND password = ?", 
+                  params[:username], params[:password]).first
+
+  if user
+    "SUCCECSES!"
+  else
+    "OHNOEZ! :((("
+  end
 end

@@ -1,4 +1,6 @@
 require 'sinatra'
+require "sinatra/reloader"
+require "sequel"
 
 get '/' do  
   "Hello, World!"  
@@ -14,4 +16,16 @@ end
 
 post '/form' do  
   "You said '#{params[:message]}'"  
+end
+
+get '/database' do
+	DB = Sequel.connect('sqlite://testdb')
+
+	users = DB[:users]
+
+	"users count: #{users.count}" 
+end
+
+post '/login' do
+  "Username: #{params[:username]} Password: #{params[:password]}"
 end

@@ -2,8 +2,12 @@ require 'sinatra'
 require "sinatra/reloader"
 require "sequel"
 
+configure do
+  enable :sessions
+end
+
 get '/' do  
-  "Hello, World!"  
+  "#{session[:user]}"  
 end
 
 get '/hello/:name' do  
@@ -35,7 +39,7 @@ post '/login' do
                   params[:username], params[:password]).first
 
   if user
-    "SUCCECSES!"
+    session[:user] = user[:id]
   else
     "OHNOEZ! :((("
   end

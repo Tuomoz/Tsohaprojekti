@@ -1,17 +1,14 @@
-!!! 5
-%html  
-  %head  
-    %title Site title
-    %link(href="css/bootstrap.min.css" rel="stylesheet" media="screen")
-    %link(href="css/default.css" rel="stylesheet" media="screen")
-  %body
-    .container
-      .hero-unit
-        %h1 Hello World!
-        %p  
-          A totally great subheading!
-      %form.form-signin
-        %h2 Sign in
-        %input(type="text" placeholder="Username")
-        %input(type="password" placeholder="Password")
-        %button.btn.btn-large.btn-primary(type="submit") Sign in
+.hero-unit
+  %h1 Hello World!
+  %p  
+    A totally great subheading!
+
+- if flash[:status_msg] == :login_error
+  %div(class="alert alert-error")
+    Wrong username or password!
+
+%form.form-signin(action="/" method="post")
+  %h2 Sign in
+  %input(type="text" placeholder="Username" name="username")
+  %input(type="password" placeholder="Password" name="password")
+  %button.btn.btn-large.btn-primary(type="submit") Sign in

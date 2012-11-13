@@ -1,2 +1,32 @@
-%p
-  Moi :)
+%h2 Lisäämäsi ajat
+- times.each do |time|
+  %p
+    %a{:href => "/deletetime/#{time[:id]}"}
+      %i.icon-remove
+    = "#{time[:date]} klo #{time[:time_start]} - #{time[:time_end]}"
+%hr
+
+%link(href="css/datepicker.css" rel="stylesheet" media="screen")
+%link(href="css/timePicker.css" rel="stylesheet" media="screen")
+
+%form.form-inline(action="/addtime" method="post")
+  %h2 Lisää uusi aika
+  %input.input-small(type="text" id="datepicker" name="date")
+  %input(type="text" id="time1" style="width:50px" name="time_start")
+  —
+  %input(type="text" id="time2" style="width:50px" name="time_end")
+  %button.btn(type="submit") Lisää
+
+%script(src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js")
+%script(src="js/bootstrap-datepicker.js")
+%script(src="js/jquery.timePicker.js")
+:javascript
+  $('#datepicker').datepicker({
+    format: 'yy.mm.dd',
+    autoclose: true,
+    language: 'fi'
+  });
+  $("#time1, #time2").timePicker({
+    startTime: "07:00",
+    endTime: "22:30"
+  });

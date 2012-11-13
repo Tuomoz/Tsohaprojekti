@@ -4,19 +4,23 @@
     %title Site title
     %link(href="css/bootstrap.min.css" rel="stylesheet" media="screen")
     %link(href="css/default.css" rel="stylesheet" media="screen")
+
   %body
     .container
       .masthead
         %ul(class="nav nav-pills")
           %li{:class => get_nav_class("/")}
             %a(href="/") Home
+
           %li{:class => get_nav_class("/user")}
             %a(href="/user") User page
+
           %li
             %a(href="#") About
+            
           - if logged_in?
             %li.pull-right
               %a(href="/?logout") Log out
         %hr
-
+      
       =yield

@@ -6,6 +6,9 @@
 - if flash[:status_msg] == :login_error
   %div(class="alert alert-error")
     Wrong username or password!
+- if flash[:status_msg] == :need_login
+  %div(class="alert alert-info")
+    You need to log in first!
 
 %form.form-signin(action="/" method="post")
   %h2 Sign in

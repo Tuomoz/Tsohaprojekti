@@ -27,3 +27,7 @@ div.time-picker li.selected {
   background: #0063CE;
   color: #fff;
 }
+
+div.error {
+  color: red;
+}

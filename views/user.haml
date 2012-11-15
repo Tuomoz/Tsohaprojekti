@@ -1,3 +1,6 @@
+%link(href="css/datepicker.css" rel="stylesheet" media="screen")
+%link(href="css/timePicker.css" rel="stylesheet" media="screen")
+
 %h2 Lisäämäsi ajat
 - times.each do |time|
   %p
@@ -6,15 +9,19 @@
     = "#{time[:date]} klo #{time[:time_start]} - #{time[:time_end]}"
 %hr
 
-%link(href="css/datepicker.css" rel="stylesheet" media="screen")
-%link(href="css/timePicker.css" rel="stylesheet" media="screen")
+- if flash[:status_msg] == :time_added
+  .alert.alert-success(id="alert-time-added")
+    Aika lisätty onnistuneesti!
 
-%form.form-inline(action="/addtime" method="post")
+.alert.alert-error(id="alert-bad-time" style="display:none;")
+  Päättymisajan on oltava myöhemmin kuin alkamisaika!
+
+%form.form-inline(action="/addtime" method="post" onsubmit="return validateForm()")
   %h2 Lisää uusi aika
-  %input.input-small(type="text" id="datepicker" name="date")
-  %input(type="text" id="time1" style="width:50px" name="time_start")
+  %input.input-small(type="text" id="datepicker" name="date" readonly)
+  %input(type="text" id="time1" style="width:50px" name="time_start" readonly)
   —
-  %input(type="text" id="time2" style="width:50px" name="time_end")
+  %input(type="text" id="time2" style="width:50px" name="time_end" readonly)
   %button.btn(type="submit") Lisää
 
 %script(src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js")
@@ -26,7 +33,34 @@
     autoclose: true,
     language: 'fi'
   });
+
   $("#time1, #time2").timePicker({
     startTime: "07:00",
     endTime: "22:30"
   });
+
+  $("#time1").change(function() {
+    if ($("#time2").val())
+      return;
+
+    var time = $.timePicker("#time1").getTime();
+    var hour = new Date(0, 0, 0, 1, 0, 0).getTime();
+    $.timePicker("#time2").setTime(time);
+  });
+
+  function validateForm() {
+    if ($.timePicker("#time1").getTime() > $.timePicker("#time2").getTime()) {
+      $("#alert-bad-time").fadeIn();
+      addFadeOut("#alert-bad-time");
+      return false;
+    }
+    return true;
+  }
+
+  function addFadeOut(id) {
+    window.setTimeout( function(){
+      $(id).fadeOut();
+    }, 3000);
+  }
+
+  addFadeOut("#alert-time-added");

@@ -48,13 +48,16 @@ post "/" do
 end
 
 get "/user" do
-  if logged_in?
-    times = DB.fetch("SELECT * FROM times WHERE user_id = ?", session[:user])
-    haml :user, locals: {times: times}
-  else
+  unless logged_in?
     flash[:status_msg] = :need_login
     redirect "/"
   end
+
+  own_times = DB.fetch("SELECT * FROM times WHERE owner_id = ?", session[:user])
+  matching_times = DB.fetch("SELECT * FROM times WHERE ")
+
+  haml :user, locals: {own_times: own_times}
+    
 end
 
 post "/addtime" do
@@ -63,7 +66,25 @@ post "/addtime" do
     redirect "/"
   end
 
-  insert_ds = DB["INSERT INTO times VALUES (null, ?, ?, ?, ?)", 
+  # TODO: Aikojen ja päivämäärän oikeellisuuden tarkistus
+  
+  found_pair = DB.fetch("SELECT id
+                         FROM times
+                         WHERE pair_id = NULL AND
+                         date = ? AND
+                         time_start <= ? AND
+                         time_end >= ?",
+                         params[:date], params[:time_end], params[:time_end]).first
+
+  if (found_pair)
+    update_ds = DB["UPDATE times SET pair_id = ? WHERE id = ?", 
+                  session[:user], found_pair[:id]]
+    update_ds.update
+    flash[:status_msg] = :pair_found
+    redirect "/user"
+  end
+
+  insert_ds = DB["INSERT INTO times VALUES (NULL, ?, ?, ?, ?, NULL)", 
                 params[:date], params[:time_start], params[:time_end], session[:user]]
   insert_ds.insert
   flash[:status_msg] = :time_added
@@ -76,7 +97,7 @@ get "/deletetime/:timeid" do
     redirect "/"
   end
 
-  delete_ds = DB["DELETE FROM times WHERE id = ? AND user_id = ?", params[:timeid], session[:user]]
+  delete_ds = DB["DELETE FROM times WHERE id = ? AND owner_id = ?", params[:timeid], session[:user]]
   delete_ds.delete
   redirect "/user"
 end

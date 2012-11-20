@@ -2,7 +2,7 @@
 %link(href="css/timePicker.css" rel="stylesheet" media="screen")
 
 %h2 Lisäämäsi ajat
-- times.each do |time|
+- own_times.each do |time|
   %p
     %a{:href => "/deletetime/#{time[:id]}"}
       %i.icon-remove
@@ -12,6 +12,9 @@
 - if flash[:status_msg] == :time_added
   .alert.alert-success(id="alert-time-added")
     Aika lisätty onnistuneesti!
+- if flash[:status_msg] == :pair_found
+  .alert.alert-success(id="alert-pair-found")
+    Ajallesi löytyi sopiva pari!
 
 .alert.alert-error(id="alert-bad-time" style="display:none;")
   Päättymisajan on oltava myöhemmin kuin alkamisaika!
@@ -27,6 +30,7 @@
 %script(src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js")
 %script(src="js/bootstrap-datepicker.js")
 %script(src="js/jquery.timePicker.js")
+
 :javascript
   $('#datepicker').datepicker({
     format: 'yy.mm.dd',

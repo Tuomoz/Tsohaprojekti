@@ -2,7 +2,7 @@
 %link(href="css/timePicker.css" rel="stylesheet" media="screen")
 
 %h2 Lisäämäsi ajat
-- own_times.each do |time|
+- times_without_pair.each do |time|
   %p
     %a{:href => "/deletetime/#{time[:id]}"}
       %i.icon-remove
@@ -33,7 +33,7 @@
 
 :javascript
   $('#datepicker').datepicker({
-    format: 'yy.mm.dd',
+    format: 'yyyy-mm-dd',
     autoclose: true,
     language: 'fi'
   });

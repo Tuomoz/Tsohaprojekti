@@ -5,9 +5,10 @@ require "sequel"
 configure do
   enable :sessions
 end
-
+  DB = Sequel.connect('postgres://tuokarkk@localhost:1234')
 get '/' do  
-  "#{session[:user]}"  
+  users = DB.fetch("SELECT * FROM users")
+  "users: #{users.count}"
 end
 
 get '/hello/:name' do  
@@ -23,7 +24,7 @@ post '/form' do
 end
 
 get '/database' do
-	DB = Sequel.connect('sqlite://testdb')
+	DB = Sequel.connect('postgres://tuokarkk:a49c3d3d3315c8f4@localhost:1234')
 
 	users = DB[:users]
 

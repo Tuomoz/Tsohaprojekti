@@ -10,11 +10,23 @@ use Rack::Flash
 
 configure do
   enable :sessions
+
 end
+  set :static, true
+  set :public, 'public'
+
+
 
 helpers do
   def logged_in?
     session[:user] != nil
+  end
+
+  def check_login
+    unless logged_in?
+      flash[:status_msg] = :need_login
+      redirect "/"
+    end
   end
 
   def get_nav_class path
@@ -24,6 +36,12 @@ helpers do
       ""
     end
   end
+
+  def get_username_from_id id
+    user = DB.fetch("SELECT username FROM users WHERE id = ?", id).first
+    return user[:username]
+  end
+
 end
 
 get "/" do
@@ -48,32 +66,30 @@ post "/" do
 end
 
 get "/user" do
-  unless logged_in?
-    flash[:status_msg] = :need_login
-    redirect "/"
-  end
+  check_login
 
-  times_without_pair = DB.fetch("SELECT *,
-                        to_char(time_start, 'HH24:MI') as time_start, 
-                        to_char(time_end, 'HH24:MI') as time_end
-                        FROM times WHERE user_id = ? AND 
-                        pair_time_id = NULL", session[:user])
+  beginning_time = Time.now
 
-  times_with_pair = DB.fetch("SELECT *,
-                        to_char(time_start, 'HH24:MI') as time_start, 
-                        to_char(time_end, 'HH24:MI') as time_end
-                        FROM times WHERE user_id = ? AND 
-                        pair_time_id != NULL", session[:user])
+  times_without_pair = DB.fetch("SELECT *
+                                 FROM times WHERE user_id = ? AND 
+                                 pair_time_id IS NULL", session[:user])
 
-  haml :user, locals: {times_without_pair: times_without_pair, times_with_pair: times_with_pair}
+  times_with_pair = DB.fetch("SELECT t.*,
+                              GREATEST (t.time_start, l.time_start) as time_start, 
+                              LEAST (t.time_end, l.time_end) as time_end,
+                              username as pair_username
+                              FROM times t, times l, users u 
+                              WHERE t.pair_time_id = l.id
+                              AND t.user_id = ? AND l.user_id = u.id", session[:user])
+
+  haml :user, locals: {times_without_pair: times_without_pair, 
+                       times_with_pair: times_with_pair, 
+                       beginning_time: beginning_time}
     
 end
 
 post "/addtime" do
-  unless logged_in?
-    flash[:status_msg] = :need_login
-    redirect "/"
-  end
+  check_login
 
   # TODO: Aikojen ja päivämäärän oikeellisuuden tarkistus kokonaan
   time_check = /^\d{2}:\d{2}$/
@@ -86,7 +102,7 @@ post "/addtime" do
                           user_id = ? AND
                           date = ? AND
                           (? BETWEEN time_start AND time_end OR 
-                          ? BETWEEN time_start AND time_end)",
+                           ? BETWEEN time_start AND time_end)",
                           session[:user], params[:date], params[:time_end], params[:time_start]).first
 
   if (overlapping_time)
@@ -125,12 +141,26 @@ post "/addtime" do
 end
 
 get "/deletetime/:timeid" do
-  unless logged_in?
-    flash[:status_msg] = :need_login
-    redirect "/"
-  end
+  check_login
 
   delete_ds = DB["DELETE FROM times WHERE id = ? AND user_id = ?", params[:timeid], session[:user]]
   delete_ds.delete
   redirect "/user"
+end
+
+get "/time/:timeid" do
+  unless logged_in?
+    flash[:status_msg] = :need_login
+    redirect "/"
+  end
+  
+  time = DB.fetch("SELECT t.*,
+                   GREATEST (t.time_start, l.time_start) as time_start, 
+                   LEAST (t.time_end, l.time_end) as time_end,
+                   username as pair_username
+                   FROM times t, times l, users u 
+                   WHERE t.pair_time_id = l.id
+                   AND t.id = ? AND l.user_id = u.id", params[:timeid]).first
+
+  haml :time, locals: {time: time}
 end

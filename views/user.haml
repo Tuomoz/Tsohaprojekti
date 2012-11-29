@@ -1,13 +1,52 @@
 %link(href="css/datepicker.css" rel="stylesheet" media="screen")
 %link(href="css/timePicker.css" rel="stylesheet" media="screen")
 
-%h2 Lisäämäsi ajat
-- times_without_pair.each do |time|
-  %p
-    %a{:href => "/deletetime/#{time[:id]}"}
-      %i.icon-remove
-    = "#{time[:date]} klo #{time[:time_start]} - #{time[:time_end]}"
-%hr
+%h2 Sovitut ajat
+%table.table.table-hover.table-bordered
+  %thead
+    %tr
+      %th Päivämäärä
+      %th Alkaen klo
+      %th Loppuen klo
+      %th Pari
+  %tbody
+    - times_with_pair.each do |time|
+      %tr.tr-link{:onclick => "document.location = 'time/#{time[:id]}'"}
+        %td 
+          = time[:date]
+        %td 
+          = time[:time_start].strftime("%H:%M")
+        %td 
+          = time[:time_end].strftime("%H:%M")
+        %td 
+          = time[:pair_username]
+%br
+
+%h2 Ajat ilman paria
+%table.table.table-hover.table-bordered
+  %thead
+    %tr
+      %th Päivämäärä
+      %th Alkaen klo
+      %th Loppuen klo
+  %tbody
+    - times_without_pair.each do |time|
+      %tr.tr-link(onclick="alert('lol')")
+        %td 
+          = time[:date]
+        %td 
+          = time[:time_start].strftime("%H:%M")
+        %td 
+          = time[:time_end].strftime("%H:%M")
+%br
+
+%form.form-inline(action="/addtime" method="post" onsubmit="return validateForm()")
+  %h2 Lisää uusi aika
+  %input.input-small(type="text" id="datepicker" name="date" readonly)
+  %input(type="text" id="time1" style="width:50px" name="time_start" readonly)
+  —
+  %input(type="text" id="time2" style="width:50px" name="time_end" readonly)
+  %button.btn(type="submit") Lisää
 
 - if flash[:status_msg] == :time_added
   .alert.alert-success(id="alert-time-added")
@@ -19,17 +58,11 @@
 .alert.alert-error(id="alert-bad-time" style="display:none;")
   Päättymisajan on oltava myöhemmin kuin alkamisaika!
 
-%form.form-inline(action="/addtime" method="post" onsubmit="return validateForm()")
-  %h2 Lisää uusi aika
-  %input.input-small(type="text" id="datepicker" name="date" readonly)
-  %input(type="text" id="time1" style="width:50px" name="time_start" readonly)
-  —
-  %input(type="text" id="time2" style="width:50px" name="time_end" readonly)
-  %button.btn(type="submit") Lisää
-
 %script(src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js")
 %script(src="js/bootstrap-datepicker.js")
 %script(src="js/jquery.timePicker.js")
+
+= "Aikaa kului #{(Time.now - beginning_time)*1000} ms."
 
 :javascript
   $('#datepicker').datepicker({

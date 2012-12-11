@@ -36,3 +36,17 @@ body {
 .table-hover tbody tr:hover th {
   background-color: #E1EDFF;
 }
+
+.modal-backdrop,
+.modal-backdrop.fade.in {
+  opacity: 0.4;
+  filter: alpha(opacity=10);
+}
+
+.input-messagebox {
+  width: 100%;
+}
+
+.modal-body {
+  max-height: 500px;
+}

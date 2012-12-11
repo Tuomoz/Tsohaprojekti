@@ -12,10 +12,6 @@ configure do
   enable :sessions
 
 end
-  set :static, true
-  set :public, 'public'
-
-
 
 helpers do
   def logged_in?
@@ -119,14 +115,14 @@ post "/addtime" do
                          params[:date], params[:time_start], params[:time_end]).first
 
   if (found_pair)
-    insert_ds = DB["INSERT INTO times (date, time_start, time_end, user_id, pair_time_id)
-                    VALUES (?, ?, ?, ?, ?) returning id", 
+    insert_ds = DB["INSERT INTO times (date, time_start, time_end, user_id, pair_time_id, conversation_id)
+                    VALUES (?, ?, ?, ?, ?, nextval('conversation_id_seq')) returning id", 
                   params[:date], params[:time_start], params[:time_end], session[:user], 
                   found_pair[:id]]
 
-    update_ds = DB["UPDATE times SET pair_time_id = ? WHERE id = ?",
+    update_ds = DB["UPDATE times SET pair_time_id = ?, conversation_id = currval('conversation_id_seq') WHERE id = ?",
                   insert_ds[:values][:id], found_pair[:id]]
-    #update_ds.update
+    update_ds.update
     flash[:status_msg] = :pair_found
 
   else
@@ -149,18 +145,41 @@ get "/deletetime/:timeid" do
 end
 
 get "/time/:timeid" do
-  unless logged_in?
-    flash[:status_msg] = :need_login
-    redirect "/"
-  end
-  
-  time = DB.fetch("SELECT t.*,
-                   GREATEST (t.time_start, l.time_start) as time_start, 
-                   LEAST (t.time_end, l.time_end) as time_end,
-                   username as pair_username
-                   FROM times t, times l, users u 
-                   WHERE t.pair_time_id = l.id
-                   AND t.id = ? AND l.user_id = u.id", params[:timeid]).first
+  check_login
 
-  haml :time, locals: {time: time}
+  if params[:unpaired]
+    time = DB.fetch("SELECT *
+                     FROM times WHERE user_id = ? AND 
+                     id = ?", session[:user], params[:timeid]).first
+    messages = nil
+  else
+    time = DB.fetch("SELECT t.*,
+                     GREATEST (t.time_start, l.time_start) as time_start, 
+                     LEAST (t.time_end, l.time_end) as time_end,
+                     username as pair_username
+                     FROM times t, times l, users u 
+                     WHERE t.pair_time_id = l.id AND t.user_id = ?
+                     AND t.id = ? AND l.user_id = u.id", session[:user], params[:timeid]).first
+
+    messages = DB.fetch("SELECT *, username FROM messages, users WHERE conversation_id = ?
+                       AND messages.user_id = users.id
+                       ORDER BY timestamp DESC", time[:conversation_id])
+  end
+  haml :time, locals: {time: time, messages: messages}, layout: !request.xhr? # Ajax ftw!
+end
+
+post "/addmessage" do
+  check_login
+
+  conversation_id = DB.fetch("SELECT conversation_id FROM times WHERE id = ? AND user_id = ?",
+                            params[:time_id], session[:user]).first
+  unless conversation_id
+    redirect "/user"
+  end
+
+  insert_ds = DB["INSERT INTO messages (conversation_id, timestamp, message, user_id)
+                  VALUES (?, CURRENT_TIMESTAMP, ?, ?)",
+                conversation_id[:conversation_id], params[:message], session[:user]]
+  insert_ds.insert
+  ":)"
 end

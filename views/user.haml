@@ -11,15 +11,11 @@
       %th Pari
   %tbody
     - times_with_pair.each do |time|
-      %tr.tr-link{:onclick => "document.location = 'time/#{time[:id]}'"}
-        %td 
-          = time[:date]
-        %td 
-          = time[:time_start].strftime("%H:%M")
-        %td 
-          = time[:time_end].strftime("%H:%M")
-        %td 
-          = time[:pair_username]
+      %tr.tr-link{onclick: "showTime(#{time[:id]})"}
+        %td= time[:date]
+        %td= time[:time_start].strftime("%H:%M")
+        %td= time[:time_end].strftime("%H:%M")
+        %td= time[:pair_username]
 %br
 
 %h2 Ajat ilman paria
@@ -31,13 +27,10 @@
       %th Loppuen klo
   %tbody
     - times_without_pair.each do |time|
-      %tr.tr-link(onclick="alert('lol')")
-        %td 
-          = time[:date]
-        %td 
-          = time[:time_start].strftime("%H:%M")
-        %td 
-          = time[:time_end].strftime("%H:%M")
+      %tr.tr-link{onclick: "showUnpairedTime(#{time[:id]})"}
+        %td= time[:date]
+        %td= time[:time_start].strftime("%H:%M")
+        %td= time[:time_end].strftime("%H:%M")
 %br
 
 %form.form-inline(action="/addtime" method="post" onsubmit="return validateForm()")
@@ -58,11 +51,20 @@
 .alert.alert-error(id="alert-bad-time" style="display:none;")
   Päättymisajan on oltava myöhemmin kuin alkamisaika!
 
+.modal.hide(id="timeModal" tabindex="-1" role="dialog" aria-labelledby="timeModalLabel" aria-hidden="true")
+  .modal-header
+    %h3 Ajan tiedot
+  .modal-body
+    %p Loading...
+
+%a(href="#timeModal" role="button" class="btn" data-toggle="modal")asd
+
 %script(src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js")
 %script(src="js/bootstrap-datepicker.js")
+%script(src="js/bootstrap.min.js")
 %script(src="js/jquery.timePicker.js")
 
-= "Aikaa kului #{(Time.now - beginning_time)*1000} ms."
+%p= "Aikaa kului #{(Time.now - beginning_time)*1000} ms."
 
 :javascript
   $('#datepicker').datepicker({
@@ -101,3 +103,13 @@
   }
 
   addFadeOut("#alert-time-added");
+
+  function showTime(id) {
+    $('#timeModal').modal('show');
+    $('#timeModal').load('/time/' + id);
+  }
+
+  function showUnpairedTime(id) {
+    $('#timeModal').modal('show');
+    $('#timeModal').load('/time/' + id + '?unpaired=true');
+  }

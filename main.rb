@@ -47,7 +47,7 @@ get "/" do
   haml :index
 end
 
-post "/" do
+post "/login" do
 
   user = DB.fetch("SELECT id FROM users WHERE username = ? AND password = ?", 
                   params[:username], params[:password]).first
@@ -182,4 +182,7 @@ post "/addmessage" do
                 conversation_id[:conversation_id], params[:message], session[:user]]
   insert_ds.insert
   ":)"
+end
+
+get "/register" do
 end

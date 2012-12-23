@@ -1,17 +1,24 @@
 .hero-unit
-  %h1 Hello World!
+  %h1 Kiipeilyajat
   %p  
-    A totally great subheading!
+    Löydä pari seinäkiipeilyyn haluamaasi aikaan!
 
-- if flash[:status_msg] == :login_error
+- if flash[:msg_type] == :error
   %div(class="alert alert-error")
-    Wrong username or password!
-- if flash[:status_msg] == :need_login
+    = flash[:msg_content]
+- if flash[:msg_type] == :info
   %div(class="alert alert-info")
-    You need to log in first!
+    = flash[:msg_content]
 
 %form.form-signin(action="/login" method="post")
-  %h2 Sign in
-  %input(type="text" placeholder="Username" name="username")
-  %input(type="password" placeholder="Password" name="password")
-  %button.btn.btn-large.btn-primary(type="submit") Sign in
+  %h2 Kirjaudu sisään
+  %input(type="text" placeholder="Käyttäjä" name="username")
+  %input(type="password" placeholder="Salasana" name="password")
+  %button.btn.btn-large.btn-primary(type="submit") Sisään
+
+%hr
+%form.form-signin(action="/newuser" method="post")
+  %h2 Luo uusi käyttäjä
+  %input(type="text" placeholder="Käyttäjänimi" name="username")
+  %input(type="password" placeholder="Salasana" name="password")
+  %button.btn.btn-large.btn-primary(type="submit") Rekisteröidy

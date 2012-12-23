@@ -8,6 +8,7 @@
       %th Päivämäärä
       %th Alkaen klo
       %th Loppuen klo
+      %th Paikka
       %th Pari
   %tbody
     - times_with_pair.each do |time|
@@ -15,6 +16,7 @@
         %td= time[:date]
         %td= time[:time_start].strftime("%H:%M")
         %td= time[:time_end].strftime("%H:%M")
+        %td= time[:location]
         %td= time[:pair_username]
 %br
 
@@ -25,12 +27,14 @@
       %th Päivämäärä
       %th Alkaen klo
       %th Loppuen klo
+      %th Paikka
   %tbody
     - times_without_pair.each do |time|
       %tr.tr-link{onclick: "showUnpairedTime(#{time[:id]})"}
         %td= time[:date]
         %td= time[:time_start].strftime("%H:%M")
         %td= time[:time_end].strftime("%H:%M")
+        %td= time[:location]
 %br
 
 %form.form-inline(action="/addtime" method="post" onsubmit="return validateForm()")
@@ -39,6 +43,12 @@
   %input(type="text" id="time1" style="width:50px" name="time_start" readonly)
   —
   %input(type="text" id="time2" style="width:50px" name="time_end" readonly)
+  @
+  %select.input-medium(name="location")
+    %option(value="Kumpula") Kumpula
+    %option(value="Tapanila") Tapanila
+    %option(value="Salmisaari") Salmisaari
+    %option(value="Myllypuro") Myllypuro
   %button.btn(type="submit") Lisää
 
 - if flash[:status_msg] == :time_added
@@ -56,8 +66,6 @@
     %h3 Ajan tiedot
   .modal-body
     %p Loading...
-
-%a(href="#timeModal" role="button" class="btn" data-toggle="modal")asd
 
 %script(src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js")
 %script(src="js/bootstrap-datepicker.js")

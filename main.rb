@@ -1,3 +1,4 @@
+# encoding: UTF-8
 require 'sinatra'
 require "sinatra/reloader"
 require "sequel"
@@ -20,7 +21,8 @@ helpers do
 
   def check_login
     unless logged_in?
-      flash[:status_msg] = :need_login
+      flash[:msg_type] = :info
+      flash[:msg_content] = "Sinun on ensin kirjauduttava sisään!"
       redirect "/"
     end
   end
@@ -40,6 +42,7 @@ helpers do
 
 end
 
+# Pääsivu
 get "/" do
   if params.has_key?("logout")
     session.clear
@@ -47,8 +50,9 @@ get "/" do
   haml :index
 end
 
+# Kirjautuminen sisään. Tarkistetaan, vastaavatko käyttäjänimi ja salasana toisiaan.
+# Tallennetaan käyttäjää vastaava id sivuston käyttämään evästeeseen.
 post "/login" do
-
   user = DB.fetch("SELECT id FROM users WHERE username = ? AND password = ?", 
                   params[:username], params[:password]).first
 
@@ -56,19 +60,25 @@ post "/login" do
     session[:user] = user[:id]
     redirect "/user"
   else
-    flash[:status_msg] = :login_error
+    flash[:msg_type] = :error
+    flash[:msg_content] = "Käyttäjänimi tai salasana on väärin!"
     redirect "/"
   end
 end
 
+# Käyttäjäsivu, jolta näkyy käyttäjän sopimat ja sopimattomat ajat. Samalta sivulta
+# voi myös lisätä uusia aikoja. Tiedot ajoista etsitään tietokannasta kahteen
+# hajautustauluun.
 get "/user" do
   check_login
 
+  # Ajan mittaaminen vain suorituskyvyn vertailemiseksi
   beginning_time = Time.now
 
   times_without_pair = DB.fetch("SELECT *
                                  FROM times WHERE user_id = ? AND 
-                                 pair_time_id IS NULL", session[:user])
+                                 pair_time_id IS NULL
+                                 ORDER BY date, time_start", session[:user])
 
   times_with_pair = DB.fetch("SELECT t.*,
                               GREATEST (t.time_start, l.time_start) as time_start, 
@@ -76,7 +86,8 @@ get "/user" do
                               username as pair_username
                               FROM times t, times l, users u 
                               WHERE t.pair_time_id = l.id
-                              AND t.user_id = ? AND l.user_id = u.id", session[:user])
+                              AND t.user_id = ? AND l.user_id = u.id
+                              ORDER BY t.date, t.time_start", session[:user])
 
   haml :user, locals: {times_without_pair: times_without_pair, 
                        times_with_pair: times_with_pair, 
@@ -84,6 +95,11 @@ get "/user" do
     
 end
 
+# Uuden ajan lisääminen. Aluksi tarkistetaan löytyykö käyttäjältä jo aikaisempi aika,
+# joka menee uuden ajan kanssa päällekkäin. Tämän jälkeen etsitään muiden käyttäjien
+# vapaista ajoista sopivaa paria ja jos sellainen löytyy, laitetaan kumpikin aika
+# viittaamaan toiseen pair_time_id -kentän avulla. Jos sopivaa paria ei löytynyt,
+# lisätään uusi aika normaalisti kantaan ja jätetään pair_time_id -kenttä tyhjäksi.
 post "/addtime" do
   check_login
 
@@ -94,6 +110,7 @@ post "/addtime" do
     redirect "/user"
   end
 
+  # Löytyykö jo samalta aikaväliltä vanhaa aikaa?
   overlapping_time = DB.fetch("SELECT id FROM times WHERE
                           user_id = ? AND
                           date = ? AND
@@ -106,19 +123,22 @@ post "/addtime" do
     redirect "/user"
   end
   
+  # Löytyykö muiden käyttäjien ajoista sopivaa paria? Sopivat ajat etsitään siten, että
+  # tapahtumalle jäisi aikaa vähintään kaksi tuntia.
   found_pair = DB.fetch("SELECT id
                          FROM times
                          WHERE pair_time_id IS NULL AND
                          date = ? AND
                          time_end - time '02:00' >= ? AND
-                         time_start <= ? - time '02:00'",
-                         params[:date], params[:time_start], params[:time_end]).first
+                         time_start <= ? - time '02:00' AND
+                         location = ?",
+                         params[:date], params[:time_start], params[:time_end], params[:location]).first
 
   if (found_pair)
-    insert_ds = DB["INSERT INTO times (date, time_start, time_end, user_id, pair_time_id, conversation_id)
-                    VALUES (?, ?, ?, ?, ?, nextval('conversation_id_seq')) returning id", 
+    insert_ds = DB["INSERT INTO times (date, time_start, time_end, user_id, pair_time_id, location, conversation_id)
+                    VALUES (?, ?, ?, ?, ?, ?, nextval('conversation_id_seq')) returning id", 
                   params[:date], params[:time_start], params[:time_end], session[:user], 
-                  found_pair[:id]]
+                  found_pair[:id], params[:location]]
 
     update_ds = DB["UPDATE times SET pair_time_id = ?, conversation_id = currval('conversation_id_seq') WHERE id = ?",
                   insert_ds[:values][:id], found_pair[:id]]
@@ -126,9 +146,9 @@ post "/addtime" do
     flash[:status_msg] = :pair_found
 
   else
-    insert_ds = DB["INSERT INTO times (date, time_start, time_end, user_id)
-                    VALUES (?, ?, ?, ?)",
-                  params[:date], params[:time_start], params[:time_end], session[:user]]
+    insert_ds = DB["INSERT INTO times (date, time_start, time_end, user_id, location)
+                    VALUES (?, ?, ?, ?, ?)",
+                  params[:date], params[:time_start], params[:time_end], session[:user], params[:location]]
     flash[:status_msg] = :time_added
     insert_ds.insert
   end
@@ -136,14 +156,33 @@ post "/addtime" do
   redirect "/user"
 end
 
+# Vanhan ajan poistaminen. Jos aikaan liittyy pari, poistetaan parin ajasta viittaus poistettavaan aikaan
+# sekä keskusteluun. Lisäksi poistetaan myös keskusteluun liittyvät viestit. Tämä tulee varmasti muuttumaan,
+# sillä oikeassa käytössä vanhojen viestien ainakin osittainen säilyttäminen olisi toivottavaa.
 get "/deletetime/:timeid" do
   check_login
+
+  time = DB.fetch("SELECT * FROM times WHERE id = ?", params[:timeid]).first
+  unless time
+    redirect "/user"
+  end
+
+  if time[:pair_time_id] != nil
+    update_ds = DB["UPDATE times SET pair_time_id = NULL, conversation_id = NULL WHERE id = ?",
+                  time[:pair_time_id]]
+    update_ds.update
+    delete_ds = DB["DELETE FROM messages WHERE conversation_id = ?", time[:conversation_id]]
+    delete_ds.delete
+  end
 
   delete_ds = DB["DELETE FROM times WHERE id = ? AND user_id = ?", params[:timeid], session[:user]]
   delete_ds.delete
   redirect "/user"
 end
 
+# Yhden ajan tarkkojen tietojen haku. Näytetään aikojen ja päivämäärän lisäksi aikaan liittyvä
+# keskustelu. Kyseisiä tietoja ei näytetä omalla sivullaan, vaan eräänlaisessa ikkunassa
+# käyttäjä-sivulla.
 get "/time/:timeid" do
   check_login
 
@@ -168,6 +207,7 @@ get "/time/:timeid" do
   haml :time, locals: {time: time, messages: messages}, layout: !request.xhr? # Ajax ftw!
 end
 
+# Uuden viestin lisääminen.
 post "/addmessage" do
   check_login
 
@@ -184,5 +224,27 @@ post "/addmessage" do
   ":)"
 end
 
-get "/register" do
+# Uuden käyttäjän rekisteröiminen. Uutta käyttäjää ei luoda, jos annettu käyttäjänimi
+# on jo käytässö aikaisemmin.
+post "/newuser" do
+  user = DB.fetch("SELECT id FROM users WHERE username = ?", params[:username]).first
+  if user
+    flash[:msg_type] = :error
+    flash[:msg_content] = "Käyttäjänimi on jo varattu!"
+    redirect "/"
+  end
+
+  insert_ds = DB["INSERT INTO users (username, password) VALUES (?, ?)",
+                params[:username], params[:password]]
+  insert_ds.insert
+  flash[:msg_type] = :success
+  flash[:msg_content] = "Käyttäjä luotu onnistuneesti!"
+  redirect ="/"
+end
+
+get "/all_times" do
+  check_login
+  times = DB.fetch("SELECT * FROM times WHERE pair_time_id IS NULL
+                    ORDER BY date DESC, time_start DESC")
+  haml :all_times, locals: {times: times}
 end

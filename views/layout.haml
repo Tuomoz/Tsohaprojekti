@@ -10,17 +10,20 @@
       .masthead
         %ul(class="nav nav-pills")
           %li{:class => get_nav_class("/")}
-            %a(href="/") Home
+            %a(href="/") Pääsivy
 
           %li{:class => get_nav_class("/user")}
-            %a(href="/user") User page
+            %a(href="/user") Käyttäjäsivu
+
+          %li{:class => get_nav_class("/all_times")}
+            %a(href="/all_times") Kaikki ajat
 
           %li
-            %a(href="#") About
-            
+            %a(href="#") Tietoa sivustosta
+
           - if logged_in?
             %li.pull-right
-              %a(href="/?logout") Log out
+              %a(href="/?logout") Kirjaudu ulos
         %hr
       
       =yield 
